@@ -399,7 +399,7 @@ public sealed partial class Viewer : GameWindow
             return;
         }
 
-        if (ImGui.MenuItem("Semi-transparent", "", mode == DisplayMode.SemiTransparent))
+        if (ImGui.MenuItem("Translucent", "", mode == DisplayMode.SemiTransparent))
         {
             mode = DisplayMode.SemiTransparent;
         }
