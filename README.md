@@ -8,6 +8,7 @@ A rudamentary scene viewer for Donkey Kong Bananza
 
 - Hold right mouse button to pan the camera around
 - WASD to move
+- Space to move up, LShift to move down
 - Scroll to change camera speed
 
 ## Building
