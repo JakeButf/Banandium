@@ -882,7 +882,7 @@ public sealed partial class Viewer : GameWindow
         int left = (int)(sceneViewPosition.X * scaleX);
         int top = (int)(sceneViewPosition.Y * scaleY);
         GL.Viewport(left, 0, Math.Max(1, FramebufferSize.X - left), Math.Max(1, FramebufferSize.Y - top));
-        if (modelsVisible || visibilityOverrides.Count > 0) modelRenderer.Draw(view * projection, modelsVisible);
+        if (modelsVisible || visibilityOverrides.Count > 0) modelRenderer.Draw(view * projection, cameraPosition, modelsVisible);
         UpdateTriggerLayers();
         renderer.Draw(view * projection, cameraPosition, forward, collisionMode, collisionShaded);
         var overlay = ImGui.GetBackgroundDrawList();
