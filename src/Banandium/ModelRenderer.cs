@@ -33,7 +33,7 @@ public sealed class ModelRenderer : IDisposable
     }
 
     private readonly int program;
-    private readonly int matrixLocation, modelLocation, tintLocation;
+    private readonly int matrixLocation, modelLocation, eyeLocation, lightLocation, tintLocation;
     private readonly List<DrawItem> items = new List<DrawItem>();
     private readonly ViewFrustum frustum = new ViewFrustum();
     private readonly Dictionary<(TextureWrapMode X, TextureWrapMode Y), int> samplers = new Dictionary<(TextureWrapMode, TextureWrapMode), int>();
@@ -54,10 +54,13 @@ public sealed class ModelRenderer : IDisposable
         uniform mat4 model;
         out vec2 texCoord;
         out vec3 surfaceNormal;
+        out vec3 worldPosition;
         out vec4 surfaceTint;
         void main() {
-            gl_Position = matrix * model * vec4(position, 1);
+            vec4 worldPos = model * vec4(position, 1.0);
+            gl_Position = matrix * worldPos;
             surfaceNormal = transpose(inverse(mat3(model))) * normal;
+            worldPosition = worldPos.xyz;
             texCoord = uv;
             surfaceTint = vertexColor;
         }
@@ -65,23 +68,46 @@ public sealed class ModelRenderer : IDisposable
         #version 330 core
         in vec2 texCoord;
         in vec3 surfaceNormal;
+        in vec3 worldPosition;
         in vec4 surfaceTint;
         uniform sampler2D albedo;
         uniform sampler2D opacity;
         uniform vec4 tint;
+        uniform vec3 eye;
+        uniform vec3 lightDirection;
         out vec4 color;
         void main() {
             vec4 sampleColor = texture(albedo, texCoord);
             if (sampleColor.a * tint.a * surfaceTint.a * texture(opacity, texCoord).r < 0.5) discard;
+
             vec3 normal = normalize(surfaceNormal);
             if (!gl_FrontFacing) normal = -normal;
-            float light = 0.55 + 0.45 * max(dot(normal, normalize(vec3(0.4, 1, 0.3))), 0.0);
-            color = vec4(pow(max(sampleColor.rgb * tint.rgb * surfaceTint.rgb * light, vec3(0)), vec3(1.0 / 2.2)), 1);
+
+            vec3 lightDir = normalize(lightDirection);
+
+            float keyLight = max(dot(normal, lightDir), 0.0);
+            float fillLight = max(dot(normal, -lightDir), 0.0);
+
+            float light = 0.25 + 0.75 * keyLight + 0.60 * fillLight;
+
+            float depth = length(eye - worldPosition);
+            float depthFactor = clamp((depth - 5.0) / 250.0, 0.0, 1.0);
+            depthFactor = pow(depthFactor, 0.4);
+
+            float proximityLight = (1.0 - depthFactor);
+            light += proximityLight;
+
+            vec3 baseColor = sampleColor.rgb * tint.rgb * surfaceTint.rgb;
+            vec3 finalColor = baseColor * light;
+
+            color = vec4(pow(max(finalColor, vec3(0.0)), vec3(1.0 / 2.2)), 1.0);
         }
-        """);
+""");
         matrixLocation = GL.GetUniformLocation(program, "matrix");
         modelLocation = GL.GetUniformLocation(program, "model");
         tintLocation = GL.GetUniformLocation(program, "tint");
+        eyeLocation = GL.GetUniformLocation(program, "eye");
+        lightLocation = GL.GetUniformLocation(program, "lightDirection");
         GL.UseProgram(program);
         GL.Uniform1(GL.GetUniformLocation(program, "albedo"), 0);
         GL.Uniform1(GL.GetUniformLocation(program, "opacity"), 1);
@@ -160,7 +186,7 @@ public sealed class ModelRenderer : IDisposable
         return TextureWrapMode.ClampToEdge;
     }
 
-    public void Draw(Matrix4x4 matrix, bool modelsVisible = true)
+    public void Draw(Matrix4x4 matrix, Vector3 eye, bool modelsVisible = true)
     {
         if (scene == null) return;
         GL.Enable(EnableCap.DepthTest);
@@ -173,8 +199,12 @@ public sealed class ModelRenderer : IDisposable
         GL.UseProgram(program);
         Shaders.Matrix(matrixLocation, matrix);
         frustum.Update(matrix);
+        GL.Uniform3(eyeLocation, eye.X, eye.Y, eye.Z);
+        Vector3 light = Vector3.Normalize(new Vector3(-0.4f, 1.0f, 0.3f));
+        GL.Uniform3(lightLocation, light.X, light.Y, light.Z);
         int lastVao = -1, lastColor = -1, lastOpacity = -1, lastSampler = -1;
         Vector4 lastTint = new Vector4(float.NaN);
+        Vector4 lastEye = new Vector4(float.NaN);
         foreach (DrawItem item in items)
         {
             ModelInstance instance = item.Instance;
