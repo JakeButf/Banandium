@@ -304,7 +304,7 @@ public sealed partial class Viewer : GameWindow
             return;
         }
 
-        if (IsFocused && scene != null && IsOverScene(ImGui.GetMousePos()))
+        if (IsFocused && scene != null)
         {
             cameraSpeed = Math.Clamp(cameraSpeed * MathF.Pow(1.15f, e.OffsetY), 0.1f, 10000);
         }
