@@ -120,12 +120,25 @@ public sealed class SceneRenderer : IDisposable
         out vec4 color;
         void main() {
             float light = 1.0;
+            float proximityLight = 0.0;
             if (useShading > .5) {
                 vec3 normal = normalize(surfaceNormal);
-                if (dot(normal, eye - worldPosition) < 0.0) normal = -normal;
-                light = .18 + .82 * max(dot(normal, lightDirection), 0.0);
+                vec3 lightDir = normalize(lightDirection);
+
+                float keyLight = max(dot(normal, lightDir), 0.0);
+                float fillLight = max(dot(normal, -lightDir), 0.0);
+
+                light = 0.25 + 0.75 * keyLight + 0.60 * fillLight;
+
+                float depth = length(eye - worldPosition);
+
+                float depthFactor = clamp((depth - 5.0) / 250.0, 0.0, 1.0);
+                depthFactor = pow(depthFactor, 0.4);
+
+                proximityLight = 0.25 * (1.0 - depthFactor);
+                light *= 1.0 + proximityLight;
             }
-            color = vec4(surfaceColor * light, alpha);
+            color = vec4(surfaceColor * light + vec3(proximityLight), alpha);
         }
         """);
         matrixLocation = GL.GetUniformLocation(program, "matrix");
@@ -149,7 +162,7 @@ public sealed class SceneRenderer : IDisposable
     public void Upload(SceneData scene)
     {
         batches.Clear();
-        var collision = new SceneLayer("Collision", new Vector3(.38f, .72f, .83f));
+        var collision = new SceneLayer("Collision", new Vector3(.60f, .90f, 1.0f));
         collision.Mesh.Vertices.AddRange(scene.Collision.Vertices);
         collision.Mesh.Parts.AddRange(scene.Collision.Parts);
         int count = 0;
@@ -271,9 +284,7 @@ public sealed class SceneRenderer : IDisposable
         GL.UseProgram(program);
         Shaders.Matrix(matrixLocation, matrix);
         GL.Uniform3(eyeLocation, eye.X, eye.Y, eye.Z);
-        Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
-        Vector3 up = Vector3.Normalize(Vector3.Cross(right, forward));
-        Vector3 light = Vector3.Normalize(-forward + up * .8f - right * .6f);
+        Vector3 light = Vector3.Normalize(new Vector3(-0.4f, 1.0f, 0.3f));
         GL.Uniform3(lightLocation, light.X, light.Y, light.Z);
         GL.BindVertexArray(vao);
         GL.Uniform1(alphaLocation, 1f);
