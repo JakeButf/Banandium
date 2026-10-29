@@ -352,7 +352,8 @@ public sealed partial class Viewer : GameWindow
             return;
         }
 
-        Vector3 forward = GetCameraDirection();
+        Vector3 camDirection = GetCameraDirection();
+        Vector3 forward = new Vector3(camDirection.X, 0, camDirection.Z);
         Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
         Vector3 movement = Vector3.Zero;
         float speedMultiplier = 1;
