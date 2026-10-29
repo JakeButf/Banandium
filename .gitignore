@@ -9,3 +9,4 @@ artifacts/
 imgui.ini
 tests/
 docs/
+.vs/
