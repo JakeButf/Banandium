@@ -304,7 +304,7 @@ public sealed partial class Viewer : GameWindow
             return;
         }
 
-        if (IsFocused && scene != null && IsOverScene(ImGui.GetMousePos()))
+        if (IsFocused && scene != null)
         {
             cameraSpeed = Math.Clamp(cameraSpeed * MathF.Pow(1.15f, e.OffsetY), 0.1f, 10000);
         }
@@ -352,9 +352,11 @@ public sealed partial class Viewer : GameWindow
             return;
         }
 
-        Vector3 forward = GetCameraDirection();
+        Vector3 camDirection = GetCameraDirection();
+        Vector3 forward = new Vector3(camDirection.X, 0, camDirection.Z);
         Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitY));
         Vector3 movement = Vector3.Zero;
+        float speedMultiplier = 1;
         if (KeyboardState.IsKeyDown(Keys.W))
         {
             movement += forward;
@@ -385,10 +387,15 @@ public sealed partial class Viewer : GameWindow
             movement -= Vector3.UnitY;
         }
 
+        if (KeyboardState.IsKeyDown(Keys.LeftControl))
+        {
+            speedMultiplier = 4;
+        }
+
         if (movement.LengthSquared() > 0)
         {
             float elapsed = (float)Math.Min(e.Time, 0.1);
-            cameraPosition += Vector3.Normalize(movement) * cameraSpeed * elapsed;
+            cameraPosition += Vector3.Normalize(movement) * cameraSpeed * speedMultiplier * elapsed;
         }
     }
 
